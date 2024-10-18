@@ -88,27 +88,74 @@ void movePlayer2(Player &player, Player &otherPlayer, const Uint8 *keys)
     }
 }
 
-void moveComputer(Player &computer, Player &ball)
+bool checkCollision(Player &player, Player &ball) 
 {
-    float dx = ball.x - computer.x;
-    float dy = ball.y - computer.y;
-    float distance = sqrt(dx*dx + dy*dy);
+    int dx = player.x - ball.x;
+    int dy = player.y - ball.y;
+    int distance = sqrt(dx*dx + dy*dy);
 
-    if (distance > 0) {
-        dx /= distance;
-        dy /= distance;
+    if (distance < PLAYER_RADIUS * 2) 
+    {
+        // Tốc độ khi bóng va chạm với người chơi
+        ball.speed = 4;
+        return true;
     }
 
-    int newX = computer.x + dx * computer.speed;
-    int newY = computer.y + dy * computer.speed;
-
-    // Ensure computer stays within field bounds
-    newX = max(FIELD_X + PLAYER_RADIUS, min(newX, FIELD_X + FIELD_WIDTH - PLAYER_RADIUS));
-    newY = max(FIELD_Y + PLAYER_RADIUS, min(newY, FIELD_Y + FIELD_HEIGHT - PLAYER_RADIUS));
-
-    computer.x = newX;
-    computer.y = newY;
+    return false;
 }
+
+void moveComputer(Player &computer, Player &ball)
+{
+    float dx, dy;
+    float distance;
+
+    // Nếu bóng gần AI (tức là AI đang có bóng)
+    if (checkCollision(computer, ball))
+    {
+        // Di chuyển về hướng khung thành đối phương (goal1 nếu AI là player2, goal2 nếu AI là player1)
+        dx = goal1.x - ball.x;
+        dy = (goal1.y + goal1.h / 2) - ball.y;  // Hướng đến giữa khung thành
+
+        distance = sqrt(dx * dx + dy * dy);
+
+        // Chuyển hướng bóng về khung thành
+        if (distance > 0) {
+            dx /= distance;
+            dy /= distance;
+        }
+
+        // Di chuyển bóng theo hướng đã tính toán
+        ball.dx = dx * ball.speed;
+        ball.dy = dy * ball.speed;
+
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+    }
+    else
+    {
+        // Nếu AI chưa có bóng, thì di chuyển theo hướng về phía bóng
+        dx = ball.x - computer.x;
+        dy = ball.y - computer.y;
+        distance = sqrt(dx * dx + dy * dy);
+
+        if (distance > 0) {
+            dx /= distance;
+            dy /= distance;
+        }
+
+        // Cập nhật vị trí của AI di chuyển theo hướng bóng
+        int newX = computer.x + dx * computer.speed;
+        int newY = computer.y + dy * computer.speed;
+
+        // Đảm bảo AI không vượt quá giới hạn sân bóng
+        newX = max(FIELD_X + PLAYER_RADIUS, min(newX, FIELD_X + FIELD_WIDTH - PLAYER_RADIUS));
+        newY = max(FIELD_Y + PLAYER_RADIUS, min(newY, FIELD_Y + FIELD_HEIGHT - PLAYER_RADIUS));
+
+        computer.x = newX;
+        computer.y = newY;
+    }
+}
+
 
 void moveBall(Player &ball) 
 {
@@ -157,22 +204,6 @@ void drawPlayer(SDL_Renderer *renderer, Player &player)
 
     SDL_SetRenderDrawColor(renderer, player.color.r, player.color.g, player.color.b, player.color.a);
     drawCircle(renderer, player.x, player.y, PLAYER_RADIUS);
-}
-
-bool checkCollision(Player &player, Player &ball) 
-{
-    int dx = player.x - ball.x;
-    int dy = player.y - ball.y;
-    int distance = sqrt(dx*dx + dy*dy);
-
-    if (distance < PLAYER_RADIUS * 2) 
-    {
-        // Tốc độ khi bóng va chạm với người chơi
-        ball.speed = 4;
-        return true;
-    }
-
-    return false;
 }
 
 bool checkGoal(SDL_Rect &goal, Player &ball) 
