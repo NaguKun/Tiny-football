@@ -39,6 +39,8 @@ struct Player
     int dx, dy;
     float speed;
     SDL_Color color;
+    bool boosted;             // Cờ kiểm tra xem đã kích hoạt tăng tốc chưa
+    Uint32 boostStartTime;     // Thời gian bắt đầu tăng tốc
 };
 
 enum GameMode {
@@ -50,6 +52,21 @@ void movePlayer1(Player &player, Player &otherPlayer, const Uint8 *keys)
 {
     int newX = player.x;
     int newY = player.y;
+
+    // Kiểm tra nếu phím X được nhấn để tăng tốc
+    if (keys[SDL_SCANCODE_X] && !player.boosted) 
+    {
+        player.speed *= 2;  // Tăng gấp đôi tốc độ
+        player.boosted = true;
+        player.boostStartTime = SDL_GetTicks();  // Ghi lại thời gian bắt đầu tăng tốc
+    }
+
+    // Nếu đã tăng tốc, kiểm tra xem thời gian tăng tốc có vượt quá 10 giây không
+    if (player.boosted && SDL_GetTicks() - player.boostStartTime > 10000) 
+    {
+        player.speed /= 2;  // Trả về tốc độ bình thường
+        player.boosted = false;  // Đánh dấu đã sử dụng tăng tốc xong
+    }
 
     if (keys[SDL_SCANCODE_W] && player.y - player.speed >= FIELD_Y + PLAYER_RADIUS - 30) newY -= player.speed;
     if (keys[SDL_SCANCODE_S] && player.y + player.speed <= FIELD_Y + FIELD_HEIGHT - PLAYER_RADIUS + 30) newY += player.speed;
@@ -72,6 +89,21 @@ void movePlayer2(Player &player, Player &otherPlayer, const Uint8 *keys)
     int newX = player.x;
     int newY = player.y;
 
+    // Kiểm tra nếu phím X được nhấn để tăng tốc
+    if (keys[SDL_SCANCODE_X] && !player.boosted) 
+    {
+        player.speed *= 2;  // Tăng gấp đôi tốc độ
+        player.boosted = true;
+        player.boostStartTime = SDL_GetTicks();  // Ghi lại thời gian bắt đầu tăng tốc
+    }
+
+    // Nếu đã tăng tốc, kiểm tra xem thời gian tăng tốc có vượt quá 10 giây không
+    if (player.boosted && SDL_GetTicks() - player.boostStartTime > 10000) 
+    {
+        player.speed /= 2;  // Trả về tốc độ bình thường
+        player.boosted = false;  // Đánh dấu đã sử dụng tăng tốc xong
+    }
+
     if (keys[SDL_SCANCODE_UP] && player.y - player.speed >= FIELD_Y + PLAYER_RADIUS - 30) newY -= player.speed;
     if (keys[SDL_SCANCODE_DOWN] && player.y + player.speed <= FIELD_Y + FIELD_HEIGHT - PLAYER_RADIUS + 30) newY += player.speed;
     if (keys[SDL_SCANCODE_LEFT] && player.x - player.speed >= FIELD_X + PLAYER_RADIUS - 30) newX -= player.speed;
@@ -87,6 +119,7 @@ void movePlayer2(Player &player, Player &otherPlayer, const Uint8 *keys)
         player.y = newY;
     }
 }
+
 
 bool checkCollision(Player &player, Player &ball) 
 {
@@ -218,11 +251,12 @@ bool checkGoal(SDL_Rect &goal, Player &ball)
     return false;
 }
 
-GameMode showMenu(SDL_Renderer *renderer, TTF_Font *font)
+GameMode showMenu(SDL_Renderer *renderer, TTF_Font *font, TTF_Font *fontLarge)
 {
     SDL_Event event;
     bool quit = false;
     int selected = 0;
+    bool showInstructions = false; // Biến kiểm tra xem có hiển thị hướng dẫn hay không
 
     while (!quit)
     {
@@ -237,46 +271,88 @@ GameMode showMenu(SDL_Renderer *renderer, TTF_Font *font)
                 switch (event.key.keysym.sym)
                 {
                     case SDLK_UP:
-                        selected = 0;
+                        selected = (selected - 1 + 3) % 3; // Có 3 lựa chọn: Player vs Player, Player vs Computer, Instruction
                         break;
                     case SDLK_DOWN:
-                        selected = 1;
+                        selected = (selected + 1) % 3;
                         break;
                     case SDLK_RETURN:
-                        quit = true;
+                        if (selected == 2)
+                        {
+                            showInstructions = !showInstructions; // Bật/tắt hướng dẫn
+                        }
+                        else
+                        {
+                            quit = true;
+                        }
                         break;
                 }
             }
         }
 
-        SDL_SetRenderDrawColor(renderer, 113, 139, 91, 255);
+        // Xóa màn hình
+        SDL_SetRenderDrawColor(renderer, 113, 139, 91, 255); // Màu nền xanh lá
         SDL_RenderClear(renderer);
 
+        // Màu văn bản
         SDL_Color textColor = {255, 255, 255, 255};
         SDL_Color selectedColor = {255, 255, 0, 255};
 
+        // Khung tên trò chơi (font lớn hơn)
+        SDL_Surface* titleSurface = TTF_RenderText_Solid(fontLarge, "KIM RI CHA - MOHAMMED SATIJ League", textColor);
+        SDL_Texture* titleTexture = SDL_CreateTextureFromSurface(renderer, titleSurface);
+
+        SDL_Rect titleRect = {WINDOW_WIDTH / 2 - titleSurface->w / 2, 100, titleSurface->w, titleSurface->h};
+        SDL_RenderCopy(renderer, titleTexture, NULL, &titleRect);
+
+        SDL_FreeSurface(titleSurface);
+        SDL_DestroyTexture(titleTexture);
+
+        // Menu các chế độ chơi
         SDL_Surface* text1 = TTF_RenderText_Solid(font, "Player vs Player", (selected == 0) ? selectedColor : textColor);
         SDL_Surface* text2 = TTF_RenderText_Solid(font, "Player vs Computer", (selected == 1) ? selectedColor : textColor);
+        SDL_Surface* instructionText = TTF_RenderText_Solid(font, "Instruction", (selected == 2) ? selectedColor : textColor);
 
         SDL_Texture* text1Texture = SDL_CreateTextureFromSurface(renderer, text1);
         SDL_Texture* text2Texture = SDL_CreateTextureFromSurface(renderer, text2);
+        SDL_Texture* instructionTexture = SDL_CreateTextureFromSurface(renderer, instructionText);
 
         SDL_Rect text1Rect = {WINDOW_WIDTH / 2 - text1->w / 2, WINDOW_HEIGHT / 2 - 50, text1->w, text1->h};
         SDL_Rect text2Rect = {WINDOW_WIDTH / 2 - text2->w / 2, WINDOW_HEIGHT / 2 + 50, text2->w, text2->h};
+        SDL_Rect instructionRect = {WINDOW_WIDTH / 2 - instructionText->w / 2, WINDOW_HEIGHT / 2 + 150, instructionText->w, instructionText->h};
 
         SDL_RenderCopy(renderer, text1Texture, NULL, &text1Rect);
         SDL_RenderCopy(renderer, text2Texture, NULL, &text2Rect);
-
-        SDL_RenderPresent(renderer);
+        SDL_RenderCopy(renderer, instructionTexture, NULL, &instructionRect);
 
         SDL_FreeSurface(text1);
         SDL_FreeSurface(text2);
+        SDL_FreeSurface(instructionText);
         SDL_DestroyTexture(text1Texture);
         SDL_DestroyTexture(text2Texture);
+        SDL_DestroyTexture(instructionTexture);
+
+        // Kiểm tra xem có hiển thị hướng dẫn hay không
+        if (showInstructions)
+        {
+            SDL_Surface* instructionSurface = TTF_RenderText_Solid(font, "Use WASD to move, X to boost speed", textColor);
+            SDL_Texture* instructionTexture = SDL_CreateTextureFromSurface(renderer, instructionSurface);
+
+            SDL_Rect instructionDisplayRect = {WINDOW_WIDTH / 2 - instructionSurface->w / 2, WINDOW_HEIGHT / 2 + 250, instructionSurface->w, instructionSurface->h};
+            SDL_RenderCopy(renderer, instructionTexture, NULL, &instructionDisplayRect);
+
+            SDL_FreeSurface(instructionSurface);
+            SDL_DestroyTexture(instructionTexture);
+        }
+
+        // Hiển thị mọi thứ
+        SDL_RenderPresent(renderer);
     }
 
     return (selected == 0) ? PLAYER_VS_PLAYER : PLAYER_VS_COMPUTER;
 }
+
+
 
 int main(int argc, char** argv)
 {   
@@ -285,8 +361,8 @@ int main(int argc, char** argv)
     SDL_Window *window = SDL_CreateWindow("Tiny Football", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-    Player player1 = {WINDOW_WIDTH / 4, WINDOW_HEIGHT / 2, 0, 0, 4, {232,109,82,255}};
-    Player player2 = {WINDOW_WIDTH * 3 / 4, WINDOW_HEIGHT / 2, 0, 0, 4, {85,137,227,255}};
+    Player player1 = {WINDOW_WIDTH / 4, WINDOW_HEIGHT / 2, 0, 0, 4, {232,109,82,255}, false, 0};
+    Player player2 = {WINDOW_WIDTH * 3 / 4, WINDOW_HEIGHT / 2, 0, 0, 4, {85,137,227,255}, false, 0};
 
     Player ball = {WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, 0, 0, 2, {255, 255, 255, 255}};
 
@@ -303,8 +379,13 @@ int main(int argc, char** argv)
     {
         cout << "TTF_OpenFont: " << TTF_GetError() << endl;
     }
+    TTF_Font* largefont = TTF_OpenFont("./font/AldotheApache.ttf", 48);
+    if (font == NULL) 
+    {
+        cout << "TTF_OpenFont: " << TTF_GetError() << endl;
+    }
 
-    GameMode gameMode = showMenu(renderer, font);
+    GameMode gameMode = showMenu(renderer, font, largefont);
 
     bool isRunning = true;
     int player2Score =0, player1Score = 0;
