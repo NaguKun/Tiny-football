@@ -42,6 +42,7 @@ struct Player
     bool boosted;             // Cờ kiểm tra xem đã kích hoạt tăng tốc chưa
     bool timestop ;             // kiem tra co dung bot lai chua
     Uint32 boostStartTime;     // Thời gian bắt đầu tăng tốc
+    Uint32 stopStartTime;
 };
 
 enum GameMode {
@@ -186,10 +187,20 @@ void moveComputer(Player &computer, Player &ball, const Uint8 *keys)
     if (keys[SDL_SCANCODE_Z]) 
     {
         ball.speed = 1.5 ;
-        ball.y+= 10;
-        moveBall(ball) ;
+        ball.y+= 20 ;
     }
-    
+    if (keys[SDL_SCANCODE_C] && !computer.timestop) 
+    {
+        computer.speed /=100 ; 
+        computer.timestop = true ; 
+        computer.stopStartTime = SDL_GetTicks();  // Ghi lại thời gian bắt đầu tăng tốc
+        // Nếu đã tăng tốc, kiểm tra xem thời gian tăng tốc có vượt quá 10 giây không
+    }
+    if (computer.timestop &&  SDL_GetTicks() - computer.stopStartTime  > 2000 ) 
+    {
+        computer.speed *= 100;  // Trả về tốc độ bình thường
+        computer.timestop = false;  // Đánh dấu đã sử dụng tăng tốc xong
+    }
 
     // Nếu bóng gần AI (tức là AI đang có bóng)
     if (checkCollision(computer, ball))
@@ -235,9 +246,6 @@ void moveComputer(Player &computer, Player &ball, const Uint8 *keys)
 
         }
         else if((computer.x-goal1.x) == (ball.x-goal1.x+PLAYER_RADIUS*2)){
-          
-           
-                
             int gg = (ball.y-goal1.y);
             int zz = (ball.x-goal1.x);
             int tt = sqrt(gg * gg + zz * zz) ;
@@ -280,12 +288,7 @@ void moveComputer(Player &computer, Player &ball, const Uint8 *keys)
 
         computer.x = newX;
         computer.y = newY;
-        }
-
-
-        
-
-       
+        }      
     } 
 }
 
@@ -395,7 +398,7 @@ GameMode showMenu(SDL_Renderer *renderer, TTF_Font *font, TTF_Font *fontLarge)
         // Kiểm tra xem có hiển thị hướng dẫn hay không
         if (showInstructions)
         {
-            SDL_Surface* instructionSurface = TTF_RenderText_Solid(font, "Use WASD to move, X to boost speed, you will receive 10 seconds to speed up", textColor);
+            SDL_Surface* instructionSurface = TTF_RenderText_Solid(font, "Use WASD to move, X to boost speed, you will receive 10 seconds to speed up, Z to deflect the ball", textColor);
             SDL_Texture* instructionTexture = SDL_CreateTextureFromSurface(renderer, instructionSurface);
 
             SDL_Rect instructionDisplayRect = {WINDOW_WIDTH / 2 - instructionSurface->w / 2, WINDOW_HEIGHT / 2 + 250, instructionSurface->w, instructionSurface->h};
