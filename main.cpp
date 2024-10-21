@@ -40,6 +40,7 @@ struct Player
     float speed;
     SDL_Color color;
     bool boosted;             // Cờ kiểm tra xem đã kích hoạt tăng tốc chưa
+    bool sucked ;             // kiem tra co duoc hut bong chua
     Uint32 boostStartTime;     // Thời gian bắt đầu tăng tốc
 };
 
@@ -127,7 +128,7 @@ bool checkCollision(Player &player, Player &ball)
     int dy = player.y - ball.y;
     int distance = sqrt(dx*dx + dy*dy);
 
-    if (distance < PLAYER_RADIUS * 2) 
+    if (distance <= PLAYER_RADIUS * 2) 
     {
         // Tốc độ khi bóng va chạm với người chơi
         ball.speed = 4;
@@ -157,24 +158,69 @@ void moveComputer(Player &computer, Player &ball)
             dy /= distance;
         }
 
-        // Di chuyển bóng theo hướng đã tính toán
+        //Di chuyển bóng theo hướng đã tính toán
         ball.dx = dx * ball.speed;
         ball.dy = dy * ball.speed;
 
-        ball.x += ball.dx;
-        ball.y += ball.dy;
+        // ball.x += ball.dx;
+        // ball.y += ball.dy;
     }
     else
     {
-        // Nếu AI chưa có bóng, thì di chuyển theo hướng về phía bóng
-        dx = ball.x - computer.x;
-        dy = ball.y - computer.y;
-        distance = sqrt(dx * dx + dy * dy);
+        if((computer.x-goal1.x) < (ball.x-goal1.x+PLAYER_RADIUS*2) ){
+            dx = ball.x - computer.x+PLAYER_RADIUS*2;
+            distance = sqrt(dx * dx);
+             if (distance > 0) {
+               dx /= distance;
+            }
 
-        if (distance > 0) {
+            // Cập nhật vị trí của AI di chuyển theo hướng bóng
+            int newX = computer.x + dx * computer.speed;
+            //int newY = computer.y + dy * computer.speed;
+
+            // Đảm bảo AI không vượt quá giới hạn sân bóng
+            newX = max(FIELD_X + PLAYER_RADIUS, min(newX, FIELD_X + FIELD_WIDTH - PLAYER_RADIUS));
+            //newY = max(FIELD_Y + PLAYER_RADIUS, min(newY, FIELD_Y + FIELD_HEIGHT - PLAYER_RADIUS));
+
+            computer.x = newX;
+            // computer.y = newY;
+
+        }
+        else if((computer.x-goal1.x) == (ball.x-goal1.x+PLAYER_RADIUS*2)){
+          
+           
+                
+            int gg = (ball.y-goal1.y);
+            int zz = (ball.x-goal1.x);
+            int tt = sqrt(gg * gg + zz * zz) ;
+            gg = gg/tt ;
+
+            dy = ball.y-computer.y + gg*PLAYER_RADIUS*2 ;
+            
+            distance = sqrt(dy * dy);
+            if (distance > 0) {
+            dy /= distance;
+            }
+
+            // Cập nhật vị trí của AI di chuyển theo hướng bóng
+            // int newX = computer.x + dx * computer.speed;
+            int newY = computer.y + dy * computer.speed;
+
+            // Đảm bảo AI không vượt quá giới hạn sân bóng
+            // newX = max(FIELD_X + PLAYER_RADIUS, min(newX, FIELD_X + FIELD_WIDTH - PLAYER_RADIUS));
+            newY = max(FIELD_Y + PLAYER_RADIUS, min(newY, FIELD_Y + FIELD_HEIGHT - PLAYER_RADIUS));
+
+            // computer.x = newX;
+            computer.y = newY;
+        }
+        else {
+            dx = ball.x - computer.x + PLAYER_RADIUS*2;
+            dy = ball.y - computer.y ;
+            distance = sqrt(dx * dx + dy * dy);
+            if (distance > 0) {
             dx /= distance;
             dy /= distance;
-        }
+            }
 
         // Cập nhật vị trí của AI di chuyển theo hướng bóng
         int newX = computer.x + dx * computer.speed;
@@ -186,7 +232,13 @@ void moveComputer(Player &computer, Player &ball)
 
         computer.x = newX;
         computer.y = newY;
-    }
+        }
+
+
+        
+
+       
+    } 
 }
 
 
@@ -207,7 +259,7 @@ void moveBall(Player &ball)
         ball.y = newY;
 
     // Giảm tốc độ bóng theo thời gian
-    ball.speed *= 0.95;
+    ball.speed *= 0.94;
 
     // Dừng hẳn bóng nếu tốc độ nhỏ hơn 0.08
     if (ball.speed < 0.08)
