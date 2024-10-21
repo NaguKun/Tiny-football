@@ -40,7 +40,7 @@ struct Player
     float speed;
     SDL_Color color;
     bool boosted;             // Cờ kiểm tra xem đã kích hoạt tăng tốc chưa
-    bool sucked ;             // kiem tra co duoc hut bong chua
+    bool timestop ;             // kiem tra co dung bot lai chua
     Uint32 boostStartTime;     // Thời gian bắt đầu tăng tốc
 };
 
@@ -99,11 +99,12 @@ void movePlayer2(Player &player, Player &otherPlayer, const Uint8 *keys)
     }
 
     // Nếu đã tăng tốc, kiểm tra xem thời gian tăng tốc có vượt quá 10 giây không
-    if (player.boosted && SDL_GetTicks() - player.boostStartTime > 10000) 
+    if (player.boosted && SDL_GetTicks() - player.boostStartTime > 10000 ) 
     {
         player.speed /= 2;  // Trả về tốc độ bình thường
         player.boosted = false;  // Đánh dấu đã sử dụng tăng tốc xong
     }
+   
 
     if (keys[SDL_SCANCODE_UP] && player.y - player.speed >= FIELD_Y + PLAYER_RADIUS - 30) newY -= player.speed;
     if (keys[SDL_SCANCODE_DOWN] && player.y + player.speed <= FIELD_Y + FIELD_HEIGHT - PLAYER_RADIUS + 30) newY += player.speed;
@@ -138,10 +139,57 @@ bool checkCollision(Player &player, Player &ball)
     return false;
 }
 
-void moveComputer(Player &computer, Player &ball)
+void moveBall(Player &ball) 
+{
+    int newX = ball.x + ball.dx * ball.speed;
+    int newY = ball.y + ball.dy * ball.speed;
+
+    // Kiểm tra va chạm với biên
+    if (newX - PLAYER_RADIUS < FIELD_X || newX + PLAYER_RADIUS > FIELD_X + FIELD_WIDTH) 
+        ball.dx *= -1; // Reverse horizontal direction
+    else 
+        ball.x = newX;
+
+    if (newY - PLAYER_RADIUS < FIELD_Y || newY + PLAYER_RADIUS > FIELD_Y + FIELD_HEIGHT)
+        ball.dy *= -1; // Reverse vertical direction
+    else
+        ball.y = newY;
+
+    // Giảm tốc độ bóng theo thời gian
+    ball.speed *= 0.94;
+
+    // Dừng hẳn bóng nếu tốc độ nhỏ hơn 0.08
+    if (ball.speed < 0.08)
+        ball.speed = 0;
+}
+
+void drawCircle(SDL_Renderer *renderer, int centerX, int centerY, int radius) 
+{
+    for (int w = 0; w < radius * 2; w++) 
+    {
+        for (int h = 0; h < radius * 2; h++) 
+        {
+            int dx = radius - w;
+            int dy = radius - h;
+            if ((dx*dx + dy*dy) <= (radius * radius)) 
+            {
+                SDL_RenderDrawPoint(renderer, centerX + dx, centerY + dy);
+            }
+        }
+    }
+}
+
+void moveComputer(Player &computer, Player &ball, const Uint8 *keys)
 {
     float dx, dy;
     float distance;
+    if (keys[SDL_SCANCODE_Z]) 
+    {
+        ball.speed = 1.5 ;
+        ball.y+= 10;
+        moveBall(ball) ;
+    }
+    
 
     // Nếu bóng gần AI (tức là AI đang có bóng)
     if (checkCollision(computer, ball))
@@ -241,46 +289,6 @@ void moveComputer(Player &computer, Player &ball)
     } 
 }
 
-
-void moveBall(Player &ball) 
-{
-    int newX = ball.x + ball.dx * ball.speed;
-    int newY = ball.y + ball.dy * ball.speed;
-
-    // Kiểm tra va chạm với biên
-    if (newX - PLAYER_RADIUS < FIELD_X || newX + PLAYER_RADIUS > FIELD_X + FIELD_WIDTH) 
-        ball.dx *= -1; // Reverse horizontal direction
-    else 
-        ball.x = newX;
-
-    if (newY - PLAYER_RADIUS < FIELD_Y || newY + PLAYER_RADIUS > FIELD_Y + FIELD_HEIGHT)
-        ball.dy *= -1; // Reverse vertical direction
-    else
-        ball.y = newY;
-
-    // Giảm tốc độ bóng theo thời gian
-    ball.speed *= 0.94;
-
-    // Dừng hẳn bóng nếu tốc độ nhỏ hơn 0.08
-    if (ball.speed < 0.08)
-        ball.speed = 0;
-}
-
-void drawCircle(SDL_Renderer *renderer, int centerX, int centerY, int radius) 
-{
-    for (int w = 0; w < radius * 2; w++) 
-    {
-        for (int h = 0; h < radius * 2; h++) 
-        {
-            int dx = radius - w;
-            int dy = radius - h;
-            if ((dx*dx + dy*dy) <= (radius * radius)) 
-            {
-                SDL_RenderDrawPoint(renderer, centerX + dx, centerY + dy);
-            }
-        }
-    }
-}
 
 void drawPlayer(SDL_Renderer *renderer, Player &player)
 {
@@ -387,7 +395,7 @@ GameMode showMenu(SDL_Renderer *renderer, TTF_Font *font, TTF_Font *fontLarge)
         // Kiểm tra xem có hiển thị hướng dẫn hay không
         if (showInstructions)
         {
-            SDL_Surface* instructionSurface = TTF_RenderText_Solid(font, "Use WASD to move, X to boost speed", textColor);
+            SDL_Surface* instructionSurface = TTF_RenderText_Solid(font, "Use WASD to move, X to boost speed, you will receive 10 seconds to speed up", textColor);
             SDL_Texture* instructionTexture = SDL_CreateTextureFromSurface(renderer, instructionSurface);
 
             SDL_Rect instructionDisplayRect = {WINDOW_WIDTH / 2 - instructionSurface->w / 2, WINDOW_HEIGHT / 2 + 250, instructionSurface->w, instructionSurface->h};
@@ -464,7 +472,7 @@ int main(int argc, char** argv)
         if (gameMode == PLAYER_VS_PLAYER) {
             movePlayer2(player2, player1, keys);
         } else {
-            moveComputer(player2, ball);
+            moveComputer(player2, ball, keys);
         }
         moveBall(ball);
 
