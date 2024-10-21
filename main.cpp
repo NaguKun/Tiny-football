@@ -398,7 +398,7 @@ GameMode showMenu(SDL_Renderer *renderer, TTF_Font *font, TTF_Font *fontLarge)
         // Kiểm tra xem có hiển thị hướng dẫn hay không
         if (showInstructions)
         {
-            SDL_Surface* instructionSurface = TTF_RenderText_Solid(font, "Use WASD to move, X to boost speed, you will receive 10 seconds to speed up, Z to deflect the ball", textColor);
+            SDL_Surface* instructionSurface = TTF_RenderText_Solid(font, "Use WASD to move, X to boost speed, Z to deflect the ball, C to freeze the computer", textColor);
             SDL_Texture* instructionTexture = SDL_CreateTextureFromSurface(renderer, instructionSurface);
 
             SDL_Rect instructionDisplayRect = {WINDOW_WIDTH / 2 - instructionSurface->w / 2, WINDOW_HEIGHT / 2 + 250, instructionSurface->w, instructionSurface->h};
